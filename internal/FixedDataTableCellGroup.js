@@ -69,6 +69,8 @@ var FixedDataTableCellGroupImpl = _React2.default.createClass({
     onColumnReorderMove: PropTypes.func,
     onColumnReorderEnd: PropTypes.func,
 
+    maxVisibleColumns: PropTypes.number.isRequired,
+
     rowHeight: PropTypes.number.isRequired,
 
     rowIndex: PropTypes.number.isRequired,
@@ -79,15 +81,25 @@ var FixedDataTableCellGroupImpl = _React2.default.createClass({
   },
 
   componentWillMount: function componentWillMount() {
+    this._staticCellArray = [];
+    this._columnsToRender = [];
     this._initialRender = true;
+  },
+  componentWillUnmount: function componentWillUnmount() {
+    this._staticCellArray.length = 0;
+    this._columnsToRender.length = 0;
   },
   componentDidMount: function componentDidMount() {
     this._initialRender = false;
   },
   render: function render() /*object*/{
+    var _this = this;
+
     var props = this.props;
     var columns = props.columns;
-    var cells = new Array(columns.length);
+
+    this._staticCellArray.length = props.maxVisibleColumns;
+    this._columnsToRender.length = props.maxVisibleColumns;
 
     var contentWidth = this._getColumnsWidth(columns);
 
@@ -96,15 +108,60 @@ var FixedDataTableCellGroupImpl = _React2.default.createClass({
     }, false);
 
     var currentPosition = 0;
-    for (var i = 0, j = columns.length; i < j; i++) {
+    var count = 0;
+
+    var newColumnsToRender = new Array(props.maxVisibleColumns);
+    var positions = new Array(props.maxVisibleColumns);
+
+    for (var i = 0; i < columns.length; i++) {
       var columnProps = columns[i].props;
       var recycable = columnProps.allowCellsRecycling && !isColumnReordering;
       if (!recycable || currentPosition - props.left <= props.width && currentPosition - props.left + columnProps.width >= 0) {
-        var key = columnProps.columnKey || 'cell_' + i;
-        cells[i] = this._renderCell(props.rowIndex, props.rowHeight, columnProps, currentPosition, key, contentWidth, isColumnReordering);
+        positions[i] = currentPosition;
+        newColumnsToRender[count++] = i;
       }
+
       currentPosition += columnProps.width;
     }
+
+    //TODO move this recycle logic into main state
+    var newColumnsSet = new Set(newColumnsToRender);
+    var oldColumnsSet = new Set(this._columnsToRender);
+    var indexes = [];
+
+    for (var i = props.maxVisibleColumns; i >= 0; i--) {
+      var column = this._columnsToRender[i];
+      if (!column || !newColumnsSet.has(column)) {
+        indexes.push(i);
+      }
+    }
+
+    newColumnsToRender.forEach(function (column) {
+      if (!oldColumnsSet.has(column)) {
+        _this._columnsToRender[indexes.pop()] = column;
+      }
+    });
+
+    var cellCount = 0;
+    this._columnsToRender.forEach(function (i) {
+      var columnProps = columns[i].props;
+      var currentPosition = positions[i];
+      var key = columnProps.columnKey || 'cell_' + i;
+      _this._staticCellArray[cellCount++] = _this._renderCell(props.rowIndex, props.rowHeight, columnProps, currentPosition, key, contentWidth, isColumnReordering);
+    });
+
+    while (cellCount < props.maxVisibleColumns) {
+      if (!this._staticCellArray[cellCount]) {
+        break;
+      }
+
+      this._staticCellArray[cellCount] = _React2.default.cloneElement(this._staticCellArray[cellCount], {
+        visible: false
+      });
+
+      cellCount++;
+    }
+
     var style = {
       height: props.height,
       position: 'absolute',
@@ -118,7 +175,7 @@ var FixedDataTableCellGroupImpl = _React2.default.createClass({
       {
         className: (0, _cx2.default)('fixedDataTableCellGroupLayout/cellGroup'),
         style: style },
-      cells
+      this._staticCellArray
     );
   },
   _renderCell: function _renderCell(
@@ -159,7 +216,8 @@ var FixedDataTableCellGroupImpl = _React2.default.createClass({
       left: left,
       cell: columnProps.cell,
       columnGroupWidth: columnGroupWidth,
-      pureRendering: pureRendering
+      pureRendering: pureRendering,
+      visible: true
     });
   },
   _getColumnsWidth: function _getColumnsWidth( /*array*/columns) /*number*/{

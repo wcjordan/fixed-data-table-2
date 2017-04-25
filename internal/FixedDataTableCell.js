@@ -14,6 +14,10 @@ var _FixedDataTableHelper = require('./FixedDataTableHelper');
 
 var _FixedDataTableHelper2 = _interopRequireDefault(_FixedDataTableHelper);
 
+var _FixedDataTableTranslateDOMPosition = require('./FixedDataTableTranslateDOMPosition');
+
+var _FixedDataTableTranslateDOMPosition2 = _interopRequireDefault(_FixedDataTableTranslateDOMPosition);
+
 var _React = require('./React');
 
 var _React2 = _interopRequireDefault(_React);
@@ -103,6 +107,11 @@ var FixedDataTableCell = _React2.default.createClass({
     left: PropTypes.number,
 
     /**
+     * Indicates if column should be rendered
+     */
+    visible: PropTypes.bool.isRequired,
+
+    /**
      * Flag for enhanced performance check
      */
     pureRendering: PropTypes.bool
@@ -116,8 +125,12 @@ var FixedDataTableCell = _React2.default.createClass({
     };
   },
   shouldComponentUpdate: function shouldComponentUpdate(nextProps) {
-    if (nextProps.isScrolling && this.props.rowIndex === nextProps.rowIndex) {
+    if (nextProps.isScrolling && this.props.rowIndex === nextProps.rowIndex && this.props.columnKey === nextProps.columnKey) {
       return false;
+    }
+
+    if (!!(this.props.visible ^ nextProps.visible)) {
+      return true;
     }
 
     //Performance check not enabled
@@ -221,6 +234,10 @@ var FixedDataTableCell = _React2.default.createClass({
     return DEFAULT_PROPS;
   },
   render: function render() /*object*/{
+    if (!this.props.visible) {
+      return null;
+    }
+
     var _props2 = this.props,
         height = _props2.height,
         width = _props2.width,
@@ -232,16 +249,12 @@ var FixedDataTableCell = _React2.default.createClass({
       width: width
     };
 
-    if (DIR_SIGN === 1) {
-      style.left = props.left;
-    } else {
-      style.right = props.left;
-    }
-
     if (this.state.isReorderingThisColumn) {
       style.transform = 'translateX(' + this.state.displacement + 'px) translateZ(0)';
       style.zIndex = 1;
     }
+
+    (0, _FixedDataTableTranslateDOMPosition2.default)(style, DIR_SIGN * props.left, 0, false);
 
     var className = (0, _joinClasses2.default)((0, _cx2.default)({
       'fixedDataTableCellLayout/main': true,

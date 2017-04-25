@@ -59,6 +59,7 @@ var FixedDataTableBufferedRows = _React2.default.createClass({
     onRowMouseDown: PropTypes.func,
     onRowMouseEnter: PropTypes.func,
     onRowMouseLeave: PropTypes.func,
+    maxVisibleColumns: PropTypes.number.isRequired,
     rowClassNameGetter: PropTypes.func,
     rowsCount: PropTypes.number.isRequired,
     rowHeightGetter: PropTypes.func,
@@ -155,6 +156,7 @@ var FixedDataTableBufferedRows = _React2.default.createClass({
         onMouseDown: props.onRowMouseDown,
         onMouseEnter: props.onRowMouseEnter,
         onMouseLeave: props.onRowMouseLeave,
+        maxVisibleColumns: props.maxVisibleColumns,
         className: (0, _joinClasses2.default)(rowClassNameGetter(rowIndex), (0, _cx2.default)('public/fixedDataTable/bodyRow'), (0, _cx2.default)({
           'fixedDataTableLayout/hasBottomBorder': hasBottomBorder,
           'public/fixedDataTable/hasBottomBorder': hasBottomBorder
