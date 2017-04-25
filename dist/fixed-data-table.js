@@ -714,6 +714,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        scrollLeft: state.scrollX,
 	        fixedColumns: state.groupHeaderFixedColumns,
 	        scrollableColumns: state.groupHeaderScrollableColumns,
+	        maxVisibleColumns: state.maxVisibleColumns,
 	        onColumnResize: this._onColumnResize,
 	        onColumnReorder: onColumnReorder,
 	        onColumnReorderMove: this._onColumnReorderMove
@@ -787,6 +788,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        height: state.footerHeight,
 	        index: -1,
 	        zIndex: 1,
+	        maxVisibleColumns: state.maxVisibleColumns,
 	        offsetTop: footOffsetTop,
 	        fixedColumns: state.footFixedColumns,
 	        scrollableColumns: state.footScrollableColumns,
@@ -808,6 +810,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      scrollLeft: state.scrollX,
 	      fixedColumns: state.headFixedColumns,
 	      scrollableColumns: state.headScrollableColumns,
+	      maxVisibleColumns: state.maxVisibleColumns,
 	      onColumnResize: this._onColumnResize,
 	      onColumnReorder: onColumnReorder,
 	      onColumnReorderMove: this._onColumnReorderMove,
@@ -869,6 +872,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      firstRowOffset: state.firstRowOffset,
 	      fixedColumns: state.bodyFixedColumns,
 	      height: state.bodyHeight,
+	      maxVisibleColumns: state.maxVisibleColumns,
 	      offsetTop: offsetTop,
 	      onRowClick: state.onRowClick,
 	      onRowDoubleClick: state.onRowDoubleClick,
@@ -1185,6 +1189,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var scrollContentHeight = this._scrollHelper.getContentHeight();
 	    var totalHeightNeeded = scrollContentHeight + totalHeightReserved;
 	    var scrollContentWidth = _FixedDataTableWidthHelper2.default.getTotalWidth(columns);
+	    var maxVisibleColumns = _FixedDataTableWidthHelper2.default.getMaxVisibleColumns(columns, props.width);
 
 	    var horizontalScrollbarVisible = scrollContentWidth > props.width && props.overflowX !== 'hidden' && props.showScrollbarX !== false;
 
@@ -1236,6 +1241,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      horizontalScrollbarVisible: horizontalScrollbarVisible,
 	      maxScrollX: maxScrollX,
 	      maxScrollY: maxScrollY,
+	      maxVisibleColumns: maxVisibleColumns,
 	      reservedHeight: totalHeightReserved,
 	      scrollContentHeight: scrollContentHeight,
 	      scrollX: scrollX,
@@ -3970,6 +3976,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    onRowMouseDown: PropTypes.func,
 	    onRowMouseEnter: PropTypes.func,
 	    onRowMouseLeave: PropTypes.func,
+	    maxVisibleColumns: PropTypes.number.isRequired,
 	    rowClassNameGetter: PropTypes.func,
 	    rowsCount: PropTypes.number.isRequired,
 	    rowHeightGetter: PropTypes.func,
@@ -4066,6 +4073,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        onMouseDown: props.onRowMouseDown,
 	        onMouseEnter: props.onRowMouseEnter,
 	        onMouseLeave: props.onRowMouseLeave,
+	        maxVisibleColumns: props.maxVisibleColumns,
 	        className: (0, _joinClasses2.default)(rowClassNameGetter(rowIndex), (0, _cx2.default)('public/fixedDataTable/bodyRow'), (0, _cx2.default)({
 	          'fixedDataTableLayout/hasBottomBorder': hasBottomBorder,
 	          'public/fixedDataTable/hasBottomBorder': hasBottomBorder
@@ -4722,6 +4730,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    scrollableColumns: PropTypes.array.isRequired,
 
 	    /**
+	     * Number of max on screen columns
+	     */
+	    maxVisibleColumns: PropTypes.number.isRequired,
+
+	    /**
 	     * The distance between the left edge of the table and the leftmost portion
 	     * of the row currently visible in the table.
 	     */
@@ -4793,6 +4806,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      'public/fixedDataTableRow/even': this.props.index % 2 === 0
 	    });
 	    var fixedColumnsWidth = this._getColumnsWidth(this.props.fixedColumns);
+
 	    var fixedColumns = _React2.default.createElement(_FixedDataTableCellGroup2.default, {
 	      key: 'fixed_cells',
 	      isScrolling: this.props.isScrolling,
@@ -4801,6 +4815,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      width: fixedColumnsWidth,
 	      zIndex: 2,
 	      columns: this.props.fixedColumns,
+	      maxVisibleColumns: this.props.maxVisibleColumns,
 	      onColumnResize: this.props.onColumnResize,
 	      onColumnReorder: this.props.onColumnReorder,
 	      onColumnReorderMove: this.props.onColumnReorderMove,
@@ -4820,6 +4835,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      width: this.props.width - fixedColumnsWidth,
 	      zIndex: 0,
 	      columns: this.props.scrollableColumns,
+	      maxVisibleColumns: this.props.maxVisibleColumns,
 	      onColumnResize: this.props.onColumnResize,
 	      onColumnReorder: this.props.onColumnReorder,
 	      onColumnReorderMove: this.props.onColumnReorderMove,
@@ -5032,6 +5048,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    onColumnReorderMove: PropTypes.func,
 	    onColumnReorderEnd: PropTypes.func,
 
+	    maxVisibleColumns: PropTypes.number.isRequired,
+
 	    rowHeight: PropTypes.number.isRequired,
 
 	    rowIndex: PropTypes.number.isRequired,
@@ -5042,15 +5060,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	  },
 
 	  componentWillMount: function componentWillMount() {
+	    this._staticCellArray = [];
+	    this._columnsToRender = [];
 	    this._initialRender = true;
+	  },
+	  componentWillUnmount: function componentWillUnmount() {
+	    this._staticCellArray.length = 0;
+	    this._columnsToRender.length = 0;
 	  },
 	  componentDidMount: function componentDidMount() {
 	    this._initialRender = false;
 	  },
 	  render: function render() /*object*/{
+	    var _this = this;
+
 	    var props = this.props;
 	    var columns = props.columns;
-	    var cells = new Array(columns.length);
+
+	    this._staticCellArray.length = props.maxVisibleColumns;
+	    this._columnsToRender.length = props.maxVisibleColumns;
 
 	    var contentWidth = this._getColumnsWidth(columns);
 
@@ -5059,15 +5087,60 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }, false);
 
 	    var currentPosition = 0;
-	    for (var i = 0, j = columns.length; i < j; i++) {
+	    var count = 0;
+
+	    var newColumnsToRender = new Array(props.maxVisibleColumns);
+	    var positions = new Array(props.maxVisibleColumns);
+
+	    for (var i = 0; i < columns.length; i++) {
 	      var columnProps = columns[i].props;
 	      var recycable = columnProps.allowCellsRecycling && !isColumnReordering;
 	      if (!recycable || currentPosition - props.left <= props.width && currentPosition - props.left + columnProps.width >= 0) {
-	        var key = columnProps.columnKey || 'cell_' + i;
-	        cells[i] = this._renderCell(props.rowIndex, props.rowHeight, columnProps, currentPosition, key, contentWidth, isColumnReordering);
+	        positions[i] = currentPosition;
+	        newColumnsToRender[count++] = i;
 	      }
+
 	      currentPosition += columnProps.width;
 	    }
+
+	    //TODO move this recycle logic into main state
+	    var newColumnsSet = new Set(newColumnsToRender);
+	    var oldColumnsSet = new Set(this._columnsToRender);
+	    var indexes = [];
+
+	    for (var i = props.maxVisibleColumns; i >= 0; i--) {
+	      var column = this._columnsToRender[i];
+	      if (!column || !newColumnsSet.has(column)) {
+	        indexes.push(i);
+	      }
+	    }
+
+	    newColumnsToRender.forEach(function (column) {
+	      if (!oldColumnsSet.has(column)) {
+	        _this._columnsToRender[indexes.pop()] = column;
+	      }
+	    });
+
+	    var cellCount = 0;
+	    this._columnsToRender.forEach(function (i) {
+	      var columnProps = columns[i].props;
+	      var currentPosition = positions[i];
+	      var key = columnProps.columnKey || 'cell_' + i;
+	      _this._staticCellArray[cellCount++] = _this._renderCell(props.rowIndex, props.rowHeight, columnProps, currentPosition, key, contentWidth, isColumnReordering);
+	    });
+
+	    while (cellCount < props.maxVisibleColumns) {
+	      if (!this._staticCellArray[cellCount]) {
+	        break;
+	      }
+
+	      this._staticCellArray[cellCount] = _React2.default.cloneElement(this._staticCellArray[cellCount], {
+	        visible: false
+	      });
+
+	      cellCount++;
+	    }
+
 	    var style = {
 	      height: props.height,
 	      position: 'absolute',
@@ -5081,7 +5154,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      {
 	        className: (0, _cx2.default)('fixedDataTableCellGroupLayout/cellGroup'),
 	        style: style },
-	      cells
+	      this._staticCellArray
 	    );
 	  },
 	  _renderCell: function _renderCell(
@@ -5122,7 +5195,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	      left: left,
 	      cell: columnProps.cell,
 	      columnGroupWidth: columnGroupWidth,
-	      pureRendering: pureRendering
+	      pureRendering: pureRendering,
+	      visible: true
 	    });
 	  },
 	  _getColumnsWidth: function _getColumnsWidth( /*array*/columns) /*number*/{
@@ -5664,6 +5738,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var _FixedDataTableHelper2 = _interopRequireDefault(_FixedDataTableHelper);
 
+	var _FixedDataTableTranslateDOMPosition = __webpack_require__(50);
+
+	var _FixedDataTableTranslateDOMPosition2 = _interopRequireDefault(_FixedDataTableTranslateDOMPosition);
+
 	var _React = __webpack_require__(29);
 
 	var _React2 = _interopRequireDefault(_React);
@@ -5753,6 +5831,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    left: PropTypes.number,
 
 	    /**
+	     * Indicates if column should be rendered
+	     */
+	    visible: PropTypes.bool.isRequired,
+
+	    /**
 	     * Flag for enhanced performance check
 	     */
 	    pureRendering: PropTypes.bool
@@ -5766,8 +5849,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	    };
 	  },
 	  shouldComponentUpdate: function shouldComponentUpdate(nextProps) {
-	    if (nextProps.isScrolling && this.props.rowIndex === nextProps.rowIndex) {
+	    if (nextProps.isScrolling && this.props.rowIndex === nextProps.rowIndex && this.props.columnKey === nextProps.columnKey) {
 	      return false;
+	    }
+
+	    if (!!(this.props.visible ^ nextProps.visible)) {
+	      return true;
 	    }
 
 	    //Performance check not enabled
@@ -5871,6 +5958,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return DEFAULT_PROPS;
 	  },
 	  render: function render() /*object*/{
+	    if (!this.props.visible) {
+	      return null;
+	    }
+
 	    var _props2 = this.props,
 	        height = _props2.height,
 	        width = _props2.width,
@@ -5882,16 +5973,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	      width: width
 	    };
 
-	    if (DIR_SIGN === 1) {
-	      style.left = props.left;
-	    } else {
-	      style.right = props.left;
-	    }
-
 	    if (this.state.isReorderingThisColumn) {
 	      style.transform = 'translateX(' + this.state.displacement + 'px) translateZ(0)';
 	      style.zIndex = 1;
 	    }
+
+	    (0, _FixedDataTableTranslateDOMPosition2.default)(style, DIR_SIGN * props.left, 0, false);
 
 	    var className = (0, _joinClasses2.default)((0, _cx2.default)({
 	      'fixedDataTableCellLayout/main': true,
@@ -7160,6 +7247,33 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return totalWidth;
 	}
 
+	function getMaxVisibleColumns( /*array*/columns, /*number*/width) /*number*/{
+	  var maxColumns = 0;
+	  var currentWidth = 0;
+
+	  var scrollableColumns = columns.filter(function (column) {
+	    var fixed = column.props.fixed;
+	    if (fixed) {
+	      width -= column.props.width;
+	    }
+	    return !fixed;
+	  });
+
+	  var first = 0;
+	  for (var i = 0; i < scrollableColumns.length; ++i) {
+	    var columnWidth = scrollableColumns[i].props.width;
+	    var firstColumnWidth = scrollableColumns[first].props.width;
+	    while (currentWidth - firstColumnWidth - 1 > width) {
+	      currentWidth -= scrollableColumns[first++].props.width;
+	    }
+	    currentWidth += columnWidth;
+	    maxColumns = Math.max(maxColumns, i - first + 1);
+	  }
+
+	  //Max columns that will fit on screen
+	  return maxColumns;
+	}
+
 	function getTotalFlexGrow( /*array*/columns) /*number*/{
 	  var totalFlexGrow = 0;
 	  for (var i = 0; i < columns.length; ++i) {
@@ -7262,6 +7376,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var FixedDataTableWidthHelper = {
 	  getTotalWidth: getTotalWidth,
+	  getMaxVisibleColumns: getMaxVisibleColumns,
 	  getTotalFlexGrow: getTotalFlexGrow,
 	  distributeFlexWidth: distributeFlexWidth,
 	  adjustColumnWidths: adjustColumnWidths,
